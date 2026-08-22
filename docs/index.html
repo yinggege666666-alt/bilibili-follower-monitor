@@ -86,6 +86,29 @@
         </article>
       </section>
 
+      <section class="panel account-summary-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">账号概览</p>
+            <h2>粉丝新增汇总</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="summary-table">
+            <thead>
+              <tr>
+                <th><button class="sort-button" type="button" data-sort="name">备注名 <span class="sort-icon"></span></button></th>
+                <th><button class="sort-button" type="button" data-sort="uid">UID <span class="sort-icon"></span></button></th>
+                <th><button class="sort-button" type="button" data-sort="hour">本小时新增粉丝 <span class="sort-icon"></span></button></th>
+                <th><button class="sort-button" type="button" data-sort="today">今日新增粉丝 <span class="sort-icon"></span></button></th>
+                <th><button class="sort-button" type="button" data-sort="yesterday">昨日新增粉丝 <span class="sort-icon"></span></button></th>
+              </tr>
+            </thead>
+            <tbody id="accountSummaryBody"></tbody>
+          </table>
+        </div>
+      </section>
+
       <section class="panel chart-panel">
         <div class="panel-head">
           <div>

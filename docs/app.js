@@ -6,6 +6,10 @@ const state = {
   dailyHistory: [],
   days: 30,
   pendingAdd: null,
+  summarySort: {
+    key: "hour",
+    direction: "desc",
+  },
 };
 
 const elements = {
@@ -29,6 +33,8 @@ const elements = {
   hourlyChartEmpty: document.getElementById("hourlyChartEmpty"),
   dailyChart: document.getElementById("dailyChart"),
   dailyChartEmpty: document.getElementById("dailyChartEmpty"),
+  accountSummaryBody: document.getElementById("accountSummaryBody"),
+  summarySortButtons: document.querySelectorAll("[data-sort]"),
   historyBody: document.getElementById("historyBody"),
   openManageBtn: document.getElementById("openManageBtn"),
   closeManageBtn: document.getElementById("closeManageBtn"),
@@ -76,6 +82,30 @@ function formatHour(value) {
 function formatDate(value) {
   const [, month, day] = String(value).split("-");
   return `${month}-${day}`;
+}
+
+function dateKeyFromDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function hourKeyFromDate(date) {
+  const hour = String(date.getHours()).padStart(2, "0");
+  return `${dateKeyFromDate(date)}T${hour}`;
+}
+
+function dateDeltaForHour(history, dateKey) {
+  const points = history.filter((point) => String(point.hour).startsWith(dateKey));
+  if (points.length < 2) return null;
+  return points[points.length - 1].count - points[0].count;
+}
+
+function dateDeltaFromDaily(dailyHistory, dateKey) {
+  const index = dailyHistory.findIndex((point) => point.date === dateKey);
+  if (index <= 0) return null;
+  return dailyHistory[index].count - dailyHistory[index - 1].count;
 }
 
 function downsampleSeries(data, maxPoints = 600) {
@@ -336,6 +366,146 @@ function renderManagedAccounts() {
     deleteButton.addEventListener("click", () => deleteManagedAccount(account.uid));
     row.append(main, deleteButton);
     elements.manageAccountList.append(row);
+  }
+}
+
+function computeAccountSummary(account) {
+  const history = account.hourlyHistory || [];
+  const dailyHistory = account.dailyHistory || [];
+  const latest = history.at(-1);
+  let hourDelta = null;
+  if (latest) {
+    const previousPoint = history.find(
+      (point) => point.hour === hourKeyFromDate(
+        new Date(parseHour(latest.hour).getTime() - 60 * 60 * 1000),
+      ),
+    );
+    if (previousPoint) hourDelta = latest.count - previousPoint.count;
+  }
+
+  let todayDelta = null;
+  let yesterdayDelta = null;
+  if (latest) {
+    const latestDate = parseHour(latest.hour);
+    const todayKey = dateKeyFromDate(latestDate);
+    todayDelta = dateDeltaForHour(history, todayKey);
+
+    const yesterday = new Date(
+      latestDate.getFullYear(),
+      latestDate.getMonth(),
+      latestDate.getDate() - 1,
+    );
+    const yesterdayKey = dateKeyFromDate(yesterday);
+    yesterdayDelta = dateDeltaForHour(history, yesterdayKey);
+    if (yesterdayDelta == null) {
+      yesterdayDelta = dateDeltaFromDaily(dailyHistory, yesterdayKey);
+    }
+  }
+
+  return {
+    uid: account.uid,
+    name: displayName(account),
+    hour: hourDelta,
+    today: todayDelta,
+    yesterday: yesterdayDelta,
+  };
+}
+
+function formatDelta(value) {
+  if (value == null) return { text: "--", className: "delta-flat" };
+  return {
+    text: `${value > 0 ? "+" : ""}${formatNumber(value)}`,
+    className: value > 0
+      ? "delta-up"
+      : value < 0
+        ? "delta-down"
+        : "delta-flat",
+  };
+}
+
+function sortSummaryRows(rows) {
+  const { key, direction } = state.summarySort;
+  const factor = direction === "asc" ? 1 : -1;
+
+  return rows.slice().sort((left, right) => {
+    if (key === "name") {
+      return left.name.localeCompare(right.name, "zh-CN") * factor;
+    }
+    const leftValue = key === "uid" ? left.uid : left[key];
+    const rightValue = key === "uid" ? right.uid : right[key];
+    const leftMissing = leftValue == null;
+    const rightMissing = rightValue == null;
+    if (leftMissing !== rightMissing) return leftMissing ? 1 : -1;
+    if (leftMissing && rightMissing) return 0;
+    return (leftValue - rightValue) * factor;
+  });
+}
+
+function renderAccountSummaryTable() {
+  elements.accountSummaryBody.replaceChildren();
+  const rows = sortSummaryRows(
+    state.accounts.map((account) => computeAccountSummary(account)),
+  );
+
+  elements.summarySortButtons.forEach((button) => {
+    const icon = button.querySelector(".sort-icon");
+    button.classList.toggle("active", button.dataset.sort === state.summarySort.key);
+    if (icon) {
+      if (button.dataset.sort !== state.summarySort.key) {
+        icon.textContent = "↕";
+      } else {
+        icon.textContent = state.summarySort.direction === "asc" ? "↑" : "↓";
+      }
+    }
+  });
+
+  if (!rows.length) {
+    const tr = document.createElement("tr");
+    const td = document.createElement("td");
+    td.colSpan = 5;
+    td.textContent = "还没有监控账号";
+    td.style.color = "var(--muted)";
+    td.style.textAlign = "center";
+    tr.append(td);
+    elements.accountSummaryBody.append(tr);
+    return;
+  }
+
+  for (const row of rows) {
+    const tr = document.createElement("tr");
+    tr.dataset.uid = row.uid;
+    tr.title = `查看 ${row.name}`;
+
+    const nameCell = document.createElement("td");
+    nameCell.textContent = row.name;
+
+    const uidCell = document.createElement("td");
+    uidCell.className = "uid-cell";
+    uidCell.textContent = String(row.uid);
+
+    const values = [
+      row.hour,
+      row.today,
+      row.yesterday,
+    ];
+    const cells = [nameCell, uidCell];
+    for (const value of values) {
+      const cell = document.createElement("td");
+      const delta = formatDelta(value);
+      cell.textContent = delta.text;
+      cell.className = delta.className;
+      cells.push(cell);
+    }
+
+    tr.append(...cells);
+    tr.addEventListener("click", () => {
+      state.selectedUid = row.uid;
+      const account = state.accounts.find((item) => item.uid === row.uid);
+      state.hourlyHistory = account?.hourlyHistory || [];
+      state.dailyHistory = account?.dailyHistory || [];
+      render();
+    });
+    elements.accountSummaryBody.append(tr);
   }
 }
 
@@ -721,6 +891,7 @@ function renderTable() {
 
 function render() {
   renderAccountChips();
+  renderAccountSummaryTable();
   renderOverview();
   renderCharts();
   renderTable();
@@ -781,6 +952,21 @@ elements.periodButtons.forEach((button) => {
     button.classList.add("active");
     state.days = Number(button.dataset.days);
     renderCharts();
+  });
+});
+
+elements.summarySortButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    const key = button.dataset.sort;
+    if (state.summarySort.key === key) {
+      state.summarySort.direction = state.summarySort.direction === "asc"
+        ? "desc"
+        : "asc";
+    } else {
+      state.summarySort.key = key;
+      state.summarySort.direction = key === "name" ? "asc" : "desc";
+    }
+    renderAccountSummaryTable();
   });
 });
 

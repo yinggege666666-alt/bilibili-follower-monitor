@@ -608,6 +608,51 @@ table {
   font-variant-numeric: tabular-nums;
 }
 
+.summary-table th,
+.summary-table td {
+  padding: 12px 14px;
+}
+
+.summary-table th {
+  white-space: nowrap;
+}
+
+.sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.sort-button:hover,
+.sort-button.active {
+  color: var(--accent-ink);
+}
+
+.sort-icon {
+  display: inline-flex;
+  width: 12px;
+  justify-content: center;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.summary-table .uid-cell {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-table tbody tr {
+  cursor: pointer;
+}
+
 th,
 td {
   padding: 13px 18px;
