@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>B站粉丝小时监控</title>
+  <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none">
+            <path d="M5 18V9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M12 18V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M19 18v-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M3 20h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <h1>B站粉丝小时监控</h1>
+          <p>数据保存在本机，每小时自动快照</p>
+        </div>
+      </div>
+      <div class="top-actions">
+        <span id="connectionStatus" class="status-pill">加载中</span>
+      </div>
+    </header>
+
+    <main>
+      <section class="add-band">
+        <p class="helper">这是 GitHub Pages 只读监控页，数据由 GitHub Actions 每小时自动采集并写入仓库。</p>
+      </section>
+
+      <section class="account-band" id="accountBand" aria-label="已添加账号"></section>
+
+      <section class="overview" id="overview" aria-label="数据概览">
+        <article class="metric metric-current">
+          <span class="metric-label">当前粉丝</span>
+          <strong id="metricCurrent">--</strong>
+          <span class="metric-foot" id="metricLatestTime">尚未记录</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">1 小时变化</span>
+          <strong id="metricHour">--</strong>
+          <span class="metric-foot">较上一小时</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">24 小时变化</span>
+          <strong id="metricDay">--</strong>
+          <span class="metric-foot">较 24 小时前</span>
+        </article>
+        <article class="metric">
+          <span class="metric-label">记录点数</span>
+          <strong id="metricCount">0</strong>
+          <span class="metric-foot">每小时一个点</span>
+        </article>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">小时新增</p>
+            <h2 id="hourlyChartTitle">请先添加账号</h2>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <svg id="hourlyChart" viewBox="0 0 900 320" role="img" aria-label="小时新增粉丝数折线图"></svg>
+          <div id="hourlyChartEmpty" class="empty-state" hidden>
+            <div class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 18V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 18V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M19 18v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M3 20h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <strong>还没有小时新增数据</strong>
+            <p>至少需要两个连续小时快照，才能计算每小时的粉丝变化。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel chart-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">总粉丝（天）</p>
+            <h2 id="dailyChartTitle">请先添加账号</h2>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <svg id="dailyChart" viewBox="0 0 900 320" role="img" aria-label="每日总粉丝数折线图"></svg>
+          <div id="dailyChartEmpty" class="empty-state" hidden>
+            <div class="empty-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M5 18V9" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M12 18V4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M19 18v-5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                <path d="M3 20h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+            </div>
+            <strong>还没有每日数据</strong>
+            <p>每天 00:30 会自动记录一次总粉丝数。</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel table-panel">
+        <div class="panel-head">
+          <div>
+            <p class="eyebrow">最近记录</p>
+            <h2>逐小时快照</h2>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>时间</th>
+                <th>粉丝数</th>
+                <th>较上一点</th>
+              </tr>
+            </thead>
+            <tbody id="historyBody"></tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>
