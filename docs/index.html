@@ -10,35 +10,55 @@
 <body>
   <div class="app-shell">
     <header class="topbar">
-      <div class="brand">
-        <div class="brand-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none">
-            <path d="M5 18V9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M12 18V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M19 18v-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M3 20h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
+      <div class="topbar-inner">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none">
+              <path d="M5 18V9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M12 18V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M19 18v-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              <path d="M3 20h18" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <div>
+            <h1>B站粉丝小时监控</h1>
+            <p id="statusLine" class="status-line">正在加载数据…</p>
+          </div>
         </div>
-        <div>
-          <h1>B站粉丝小时监控</h1>
-          <p>GitHub 每小时自动更新</p>
+        <div class="top-actions">
+          <span id="connectionStatus" class="status-pill">加载中</span>
+          <button id="refreshBtn" class="button ghost" type="button">刷新数据</button>
+          <button id="openManageBtn" class="button ghost" type="button">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M4 21v-7M12 21v-12M20 21V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+              <path d="M2 21h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+            管理账号
+          </button>
         </div>
-      </div>
-      <div class="top-actions">
-        <span id="connectionStatus" class="status-pill">加载中</span>
-        <button id="openManageBtn" class="button ghost" type="button">
-          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M4 21v-7M12 21v-12M20 21V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M2 21h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-          </svg>
-          管理账号
-        </button>
       </div>
     </header>
 
-    <main>
+    <main class="page">
       <section class="add-band">
-        <p class="helper">这是公开查看页。点击右上角“管理账号”可以添加或删除要监控的 UID。</p>
+        <form id="addForm" class="add-form">
+          <input id="addUidInput" class="input" type="text" placeholder="输入B站UID" autocomplete="off">
+          <input id="addNameInput" class="input add-name-input" type="text" placeholder="备注名（可选）" autocomplete="off">
+          <button class="button primary" type="submit">添加账号</button>
+        </form>
+        <span class="cloud-hint">云端每小时自动更新；添加/删除后约30秒生效</span>
+        <span id="message" class="message" role="status"></span>
+      </section>
+
+      <section class="chart-head">
+        <div class="chart-tools">
+          <h2>粉丝数据趋势</h2>
+        </div>
+        <div id="periodButtons" class="segmented" role="group" aria-label="图表时间范围">
+          <button type="button" data-days="7">近7天</button>
+          <button type="button" data-days="30" class="active">近30天</button>
+          <button type="button" data-days="0">全部</button>
+        </div>
       </section>
 
       <section class="account-band" id="accountBand" aria-label="已添加账号"></section>
