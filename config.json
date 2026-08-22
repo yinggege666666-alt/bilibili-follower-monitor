@@ -1,8 +1,3 @@
 {
-  "accounts": [
-    {
-      "uid": 2,
-      "name": "测试账号"
-    }
-  ]
+  "accounts": []
 }
