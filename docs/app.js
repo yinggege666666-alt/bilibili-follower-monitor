@@ -5,6 +5,7 @@ const state = {
   hourlyHistory: [],
   dailyHistory: [],
   days: 30,
+  pendingAdd: null,
 };
 
 const elements = {
@@ -77,6 +78,30 @@ function formatDate(value) {
   return `${month}-${day}`;
 }
 
+function downsampleSeries(data, maxPoints = 600) {
+  if (!data.length || data.length <= maxPoints) return data;
+
+  const bucketSize = Math.ceil(data.length / maxPoints);
+  const result = [];
+  for (let start = 0; start < data.length; start += bucketSize) {
+    const chunk = data.slice(start, start + bucketSize);
+    let minPoint = chunk[0];
+    let maxPoint = chunk[0];
+    for (let index = 1; index < chunk.length; index += 1) {
+      if (chunk[index].value < minPoint.value) minPoint = chunk[index];
+      if (chunk[index].value > maxPoint.value) maxPoint = chunk[index];
+    }
+    if (minPoint === maxPoint) {
+      result.push(minPoint);
+    } else if (data.indexOf(minPoint) < data.indexOf(maxPoint)) {
+      result.push(minPoint, maxPoint);
+    } else {
+      result.push(maxPoint, minPoint);
+    }
+  }
+  return result;
+}
+
 function showToast(message, type = "success") {
   elements.toast.textContent = message;
   elements.toast.classList.toggle("error", type === "error");
@@ -89,6 +114,10 @@ function showToast(message, type = "success") {
 
 function openManageModal() {
   elements.tokenInput.value = localStorage.getItem(TOKEN_KEY) || "";
+  if (state.pendingAdd) {
+    elements.manageUidInput.value = state.pendingAdd.uidText || "";
+    elements.manageNameInput.value = state.pendingAdd.name || "";
+  }
   elements.manageModal.hidden = false;
   renderManagedAccounts();
 }
@@ -106,6 +135,7 @@ function saveToken() {
   localStorage.setItem(TOKEN_KEY, token);
   elements.tokenInput.value = token;
   showToast("令牌已保存在当前浏览器");
+  state.pendingAdd = null;
   renderManagedAccounts();
 }
 
@@ -165,6 +195,30 @@ async function writeConfig(config) {
   });
 }
 
+function mergeConfiguredAccounts(configAccounts) {
+  const existing = new Map(
+    state.accounts.map((account) => [account.uid, account]),
+  );
+  state.accounts = configAccounts.map((account) => ({
+    ...(existing.get(account.uid) || {}),
+    ...account,
+  }));
+  if (
+    state.selectedUid
+    && !state.accounts.some((account) => account.uid === state.selectedUid)
+  ) {
+    state.selectedUid = state.accounts[0]?.uid ?? null;
+  }
+  if (!state.selectedUid && state.accounts.length) {
+    state.selectedUid = state.accounts[0].uid;
+  }
+  const selected = state.accounts.find(
+    (account) => account.uid === state.selectedUid,
+  );
+  state.hourlyHistory = selected?.hourlyHistory || [];
+  state.dailyHistory = selected?.dailyHistory || [];
+}
+
 async function triggerCollectWorkflow() {
   await githubRequest(
     `/repos/${GITHUB_REPO}/actions/workflows/collect.yml/dispatches`,
@@ -179,7 +233,12 @@ async function submitAddAccount(uidText, name) {
   const uid = Number(uidText);
   if (!/^[1-9]\d{0,15}$/.test(uidText) || uid <= 0) {
     showToast("请输入有效的 B站 UID", "error");
-    return;
+    return false;
+  }
+  if (!getToken()) {
+    openManageModal();
+    showToast("请先保存 GitHub 访问令牌", "error");
+    return false;
   }
   name = name.trim();
   try {
@@ -192,30 +251,42 @@ async function submitAddAccount(uidText, name) {
       accounts.push({ uid, name });
     }
     await writeConfig({ accounts });
+    mergeConfiguredAccounts(accounts);
     await triggerCollectWorkflow();
     showToast(`已添加 UID ${uid}，正在更新数据`);
+    render();
     renderManagedAccounts();
     window.setTimeout(refresh, 35000);
+    return true;
   } catch (error) {
     showToast(error.message, "error");
+    return false;
   }
 }
 
 async function addManagedAccount() {
   const uidText = elements.manageUidInput.value.trim();
   const name = elements.manageNameInput.value.trim();
-  await submitAddAccount(uidText, name);
-  elements.manageUidInput.value = "";
-  elements.manageNameInput.value = "";
+  if (await submitAddAccount(uidText, name)) {
+    elements.manageUidInput.value = "";
+    elements.manageNameInput.value = "";
+  }
 }
 
 async function addAccountFromTop(event) {
   event.preventDefault();
   const uidText = elements.addUidInput.value.trim();
   const name = elements.addNameInput.value.trim();
-  await submitAddAccount(uidText, name);
-  elements.addUidInput.value = "";
-  elements.addNameInput.value = "";
+  if (!getToken()) {
+    state.pendingAdd = { uidText, name };
+    openManageModal();
+    showToast("请先保存 GitHub 访问令牌", "error");
+    return;
+  }
+  if (await submitAddAccount(uidText, name)) {
+    elements.addUidInput.value = "";
+    elements.addNameInput.value = "";
+  }
 }
 
 async function deleteManagedAccount(uid) {
@@ -225,8 +296,10 @@ async function deleteManagedAccount(uid) {
     const config = await readConfig();
     config.accounts = (config.accounts || []).filter((account) => account.uid !== uid);
     await writeConfig(config);
+    mergeConfiguredAccounts(config.accounts || []);
     await triggerCollectWorkflow();
     showToast(`已移除 UID ${uid}`);
+    render();
     renderManagedAccounts();
     window.setTimeout(refresh, 35000);
   } catch (error) {
@@ -300,12 +373,16 @@ function computeDeltas() {
   const previous = history.length > 1 ? history[history.length - 2] : null;
   const hourDelta = previous ? latest.count - previous.count : null;
 
-  const daily = state.dailyHistory;
-  const latestDaily = daily.at(-1);
-  const previousDaily = daily.length > 1 ? daily[daily.length - 2] : null;
-  const dayDelta = latestDaily && previousDaily
-    ? latestDaily.count - previousDaily.count
-    : null;
+  const latestDate = parseHour(latest.hour);
+  const dayTarget = new Date(latestDate.getTime() - 24 * 60 * 60 * 1000);
+  let dayBase = null;
+  for (let index = history.length - 1; index >= 0; index -= 1) {
+    if (parseHour(history[index].hour) <= dayTarget) {
+      dayBase = history[index];
+      break;
+    }
+  }
+  const dayDelta = dayBase ? latest.count - dayBase.count : null;
   return { hour: hourDelta, day: dayDelta };
 }
 
@@ -577,12 +654,22 @@ function renderCharts() {
     tooltip: `${formatNumber(point.count)} 粉丝`,
   }));
 
-  drawLineChart(elements.hourlyChart, elements.hourlyChartEmpty, hourlyDelta, {
+  drawLineChart(
+    elements.hourlyChart,
+    elements.hourlyChartEmpty,
+    downsampleSeries(hourlyDelta),
+    {
     formatLabel: formatHour,
-  });
-  drawLineChart(elements.dailyChart, elements.dailyChartEmpty, dailyTotal, {
+    },
+  );
+  drawLineChart(
+    elements.dailyChart,
+    elements.dailyChartEmpty,
+    downsampleSeries(dailyTotal, 400),
+    {
     formatLabel: formatDate,
-  });
+    },
+  );
 }
 
 function renderTable() {
@@ -648,7 +735,7 @@ function renderStatus() {
 }
 
 async function loadData() {
-  const response = await fetch(`data.json?t=${Date.now()}`, { cache: "no-store" });
+  const response = await fetch(`./data.json?t=${Date.now()}`, { cache: "no-store" });
   if (!response.ok) throw new Error("读取 data.json 失败");
   const data = await response.json();
   state.updatedAt = data.updatedAt || null;

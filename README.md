@@ -1,8 +1,8 @@
 # B站粉丝小时监控
 
-一个本地运行的网页，用来按小时记录 B站账号的粉丝数。你只要输入账号 UID，
-页面会立即读取当前粉丝数，之后只要这个本地服务保持运行，就会每小时自动记录
-一个快照，并同步到 GitHub Pages 供其他电脑查看。
+一个 B站账号粉丝数监控网页，支持按小时持续记录多个 UID。数据由
+GitHub Actions 定时采集并提交到仓库，GitHub Pages 展示，不需要本地电脑
+一直开机。本地也可以运行同一个监控服务，实时添加账号并立即读取粉丝数。
 
 ## 为什么没有直接复用 GitHub 项目
 
@@ -15,9 +15,8 @@
 ## 文件说明
 
 - `app.py`：本地服务和 B站接口请求逻辑
-- `web/index.html`：网页结构
-- `web/styles.css`：网页样式
-- `web/app.js`：网页交互和趋势图
+- `web/`：本地网页
+- `docs/`：GitHub Pages 展示页面
 - `data/followers.sqlite3`：运行后自动生成的本地数据库
 - `.github/workflows/collect.yml`：GitHub Actions 定时采集与发布
 
@@ -70,9 +69,18 @@ http://127.0.0.1:8765/
 https://yinggege666666-alt.github.io/bilibili-follower-monitor/
 ```
 
-本地网页添加或删除 UID 后，会自动更新仓库里的 `config.json` 和
-`docs/data.json`，并推送到 GitHub。GitHub Actions 也会按同样的小时和每日
-节奏采集数据。
+公开页面中的“管理账号”会直接更新仓库里的 `config.json`，再触发一次采集任务。
+GitHub Actions 按同样的小时和每日节奏采集数据。首次在公开页面管理账号前，
+需要先粘贴一个具备 `Contents` 和 `Workflows` 权限的仓库级 Personal Access
+Token；令牌只保存在当前浏览器。
+
+GitHub 仓库设置里还需要把 Pages 的 Source 选为 **GitHub Actions**，这样
+每次采集后页面才会自动发布。
+
+定时任务的 cron 使用 UTC 时间。当前配置对应北京时间：
+
+- 每小时 `10` 分左右采集一次小时快照
+- 每天 `00:30` 采集一次天快照
 
 可覆盖参数：
 

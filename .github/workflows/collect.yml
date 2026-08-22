@@ -3,10 +3,12 @@ name: Collect and publish Bilibili followers
 on:
   schedule:
     - cron: "10 * * * *"
-    - cron: "30 0 * * *"
+    - cron: "30 16 * * *"
   push:
     branches:
       - main
+    paths-ignore:
+      - "docs/data.json"
   workflow_dispatch:
 
 permissions:
@@ -32,10 +34,12 @@ jobs:
 
       - name: Determine collection mode
         run: |
-          if [ "${{ github.event.schedule }}" = "30 0 * * *" ]; then
+          if [ "${{ github.event.schedule }}" = "30 16 * * *" ]; then
             echo "MODE=daily" >> "$GITHUB_ENV"
-          else
+          elif [ "${{ github.event.schedule }}" = "10 * * * *" ]; then
             echo "MODE=hourly" >> "$GITHUB_ENV"
+          else
+            echo "MODE=both" >> "$GITHUB_ENV"
           fi
 
       - name: Collect latest follower counts

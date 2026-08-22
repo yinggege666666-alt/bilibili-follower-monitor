@@ -15,7 +15,8 @@ from app import BilibiliClient, LOCAL_TIMEZONE  # noqa: E402
 
 CONFIG_PATH = ROOT / "config.json"
 DATA_PATH = ROOT / "docs" / "data.json"
-MAX_HISTORY_POINTS = 168
+MAX_HOURLY_POINTS = 24 * 365
+MAX_DAILY_POINTS = 3650
 
 
 def load_json(path: Path) -> dict:
@@ -33,6 +34,11 @@ def save_json(path: Path, value: dict) -> None:
 
 
 def collect(mode: str = "hourly") -> None:
+    if mode == "both":
+        collect("hourly")
+        collect("daily")
+        return
+
     config = load_json(CONFIG_PATH)
     existing_data = load_json(DATA_PATH)
     existing_by_uid = {
@@ -87,7 +93,7 @@ def collect(mode: str = "hourly") -> None:
                 daily_history[-1] = daily_snapshot
             else:
                 daily_history.append(daily_snapshot)
-                daily_history = daily_history[-MAX_HISTORY_POINTS:]
+                daily_history = daily_history[-MAX_DAILY_POINTS:]
         else:
             hourly_snapshot = {
                 "hour": local_hour,
@@ -98,7 +104,7 @@ def collect(mode: str = "hourly") -> None:
                 hourly_history[-1] = hourly_snapshot
             else:
                 hourly_history.append(hourly_snapshot)
-                hourly_history = hourly_history[-MAX_HISTORY_POINTS:]
+                hourly_history = hourly_history[-MAX_HOURLY_POINTS:]
 
         output_accounts.append(
             {
@@ -119,6 +125,10 @@ def collect(mode: str = "hourly") -> None:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=("hourly", "daily"), default="hourly")
+    parser.add_argument(
+        "--mode",
+        choices=("hourly", "daily", "both"),
+        default="hourly",
+    )
     args = parser.parse_args()
     collect(args.mode)
