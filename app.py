@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import sqlite3
+import subprocess
 import threading
 import time
 import webbrowser
@@ -424,6 +425,107 @@ class MonitorStorage:
             return cursor.rowcount > 0
 
 
+def export_github_data(storage: MonitorStorage, project_root: Path) -> None:
+    accounts = storage.list_accounts()
+    config_path = project_root / "config.json"
+    data_path = project_root / "docs" / "data.json"
+
+    config = {
+        "accounts": [
+            {
+                "uid": int(account["uid"]),
+                "name": str(account.get("name") or ""),
+            }
+            for account in accounts
+        ]
+    }
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(
+        json.dumps(config, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+    data_accounts = []
+    for account in accounts:
+        uid = int(account["uid"])
+        hourly = [
+            {
+                "hour": str(row["collected_hour"]),
+                "collectedAt": str(row["collected_at"]),
+                "count": int(row["follower_count"]),
+            }
+            for row in storage.hourly_history(uid)
+        ]
+        daily = [
+            {
+                "date": str(row["collected_date"]),
+                "collectedAt": str(row["collected_at"]),
+                "count": int(row["follower_count"]),
+            }
+            for row in storage.daily_history(uid)
+        ]
+        data_accounts.append(
+            {
+                "uid": uid,
+                "name": str(account.get("name") or ""),
+                "hourlyHistory": hourly,
+                "dailyHistory": daily,
+            }
+        )
+
+    data = {
+        "updatedAt": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "accounts": data_accounts,
+    }
+    data_path.parent.mkdir(parents=True, exist_ok=True)
+    data_path.write_text(
+        json.dumps(data, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def sync_to_github(project_root: Path) -> None:
+    if not (project_root / ".git").is_dir():
+        return
+    try:
+        safe = f"safe.directory={project_root}"
+        subprocess.run(
+            ["git", "-c", safe, "-C", str(project_root), "add", "config.json", "docs/data.json"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        subprocess.run(
+            [
+                "git",
+                "-c",
+                safe,
+                "-C",
+                str(project_root),
+                "commit",
+                "-m",
+                "chore: sync follower data",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+        subprocess.run(
+            ["git", "-c", safe, "-C", str(project_root), "push", "origin", "main"],
+            check=False,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="replace",
+        )
+    except OSError:
+        return
+
+
 WEB_DIR = Path(__file__).resolve().parent / "web"
 
 
@@ -436,11 +538,13 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         storage: MonitorStorage,
         client: BilibiliClient,
         collect_lock: threading.Lock,
+        project_root: Path,
         **kwargs: Any,
     ) -> None:
         self.storage = storage
         self.client = client
         self.collect_lock = collect_lock
+        self.project_root = project_root
         super().__init__(*args, **kwargs)
 
     def _send(self, status: int, content_type: str, body: bytes) -> None:
@@ -492,11 +596,25 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
         with self.collect_lock:
             follower_count = self.client.get_follower_total(uid)
             account_name = name or self.client.get_account_name(uid) or f"UID {uid}"
-            return self.storage.save_snapshot(
+            summary = self.storage.save_snapshot(
                 uid=uid,
                 follower_count=follower_count,
                 name=account_name,
             )
+        self._schedule_sync()
+        return summary
+
+    def _schedule_sync(self) -> None:
+        project_root = self.project_root
+
+        def run() -> None:
+            try:
+                export_github_data(self.storage, project_root)
+                sync_to_github(project_root)
+            except Exception:
+                return
+
+        threading.Thread(target=run, daemon=True).start()
 
     def do_GET(self) -> None:
         request = urlsplit(self.path)
@@ -635,6 +753,7 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
             self._send_json(400, {"error": "UID 格式不正确"})
             return
         if self.storage.delete_account(uid):
+            self._schedule_sync()
             self._send_json(200, {"ok": True})
         else:
             self._send_json(404, {"error": "账号不存在"})
@@ -649,11 +768,13 @@ class HourlyScheduler:
         storage: MonitorStorage,
         client: BilibiliClient,
         collect_lock: threading.Lock,
+        project_root: Path,
         interval_seconds: int = 3600,
     ) -> None:
         self.storage = storage
         self.client = client
         self.collect_lock = collect_lock
+        self.project_root = project_root
         self.interval_seconds = interval_seconds
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
@@ -687,6 +808,12 @@ class HourlyScheduler:
                 continue
             except Exception:
                 continue
+
+        try:
+            export_github_data(self.storage, self.project_root)
+            sync_to_github(self.project_root)
+        except Exception:
+            pass
 
     def _run(self) -> None:
         if self.storage.list_accounts():
@@ -733,21 +860,25 @@ def create_server(
     database: str | Path,
     host: str = "127.0.0.1",
     port: int = 8765,
+    project_root: Path | None = None,
 ) -> ThreadingHTTPServer:
     storage = MonitorStorage(database)
     storage.initialize()
     client = BilibiliClient()
     collect_lock = threading.Lock()
+    root = (project_root or Path.cwd()).resolve()
     handler = partial(
         DashboardRequestHandler,
         storage=storage,
         client=client,
         collect_lock=collect_lock,
+        project_root=root,
     )
     server = ThreadingHTTPServer((host, port), handler)
     server.storage = storage
     server.client = client
     server.collect_lock = collect_lock
+    server.project_root = root
     return server
 
 
@@ -757,12 +888,15 @@ def run_server(
     port: int = 8765,
     open_browser: bool = True,
     interval_seconds: int = 3600,
+    project_root: Path | None = None,
 ) -> int:
-    server = create_server(database, host, port)
+    root = (project_root or Path.cwd()).resolve()
+    server = create_server(database, host, port, root)
     scheduler = HourlyScheduler(
         server.storage,
         server.client,
         server.collect_lock,
+        project_root=root,
         interval_seconds=interval_seconds,
     )
     scheduler.start()
@@ -807,6 +941,7 @@ def main(argv: list[str] | None = None) -> int:
         port=args.port,
         open_browser=not args.no_browser,
         interval_seconds=args.interval,
+        project_root=Path.cwd(),
     )
 
 
