@@ -64,6 +64,15 @@ function displayName(account) {
   return `UID ${account.uid}`;
 }
 
+function displayAccountLabel(account) {
+  const remark = displayName(account);
+  const username = String(account?.username || "").trim();
+  if (username && username !== remark) {
+    return `${remark} · ${username}`;
+  }
+  return remark;
+}
+
 function parseHour(value) {
   const [datePart, hourPart] = String(value).split("T");
   const [year, month, day] = datePart.split("-").map(Number);
@@ -337,6 +346,38 @@ async function deleteManagedAccount(uid) {
   }
 }
 
+async function renameManagedAccount(uid) {
+  const account = state.accounts.find((item) => item.uid === uid);
+  if (!account) return;
+  const currentName = displayName(account);
+  const nextName = window.prompt("请输入新的备注名", currentName);
+  if (nextName == null) return;
+  const trimmed = nextName.trim();
+  if (!trimmed) {
+    showToast("备注名不能为空", "error");
+    return;
+  }
+
+  try {
+    const config = await readConfig();
+    const target = (config.accounts || []).find((item) => item.uid === uid);
+    if (!target) {
+      showToast("账号不存在", "error");
+      return;
+    }
+    target.name = trimmed;
+    await writeConfig(config);
+    mergeConfiguredAccounts(config.accounts || []);
+    await triggerCollectWorkflow();
+    showToast("备注名已更新");
+    render();
+    renderManagedAccounts();
+    window.setTimeout(refresh, 35000);
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
 function renderManagedAccounts() {
   elements.manageAccountList.replaceChildren();
   const accounts = state.accounts;
@@ -356,15 +397,27 @@ function renderManagedAccounts() {
     const name = document.createElement("strong");
     name.textContent = displayName(account);
     const uid = document.createElement("span");
-    uid.textContent = `UID ${account.uid}`;
+    uid.textContent = account.username
+      ? `UID ${account.uid} · @${account.username}`
+      : `UID ${account.uid}`;
     main.append(name, uid);
+
+    const actions = document.createElement("div");
+    actions.className = "manage-actions";
+
+    const renameButton = document.createElement("button");
+    renameButton.type = "button";
+    renameButton.className = "button ghost compact";
+    renameButton.textContent = "改备注";
+    renameButton.addEventListener("click", () => renameManagedAccount(account.uid));
 
     const deleteButton = document.createElement("button");
     deleteButton.type = "button";
     deleteButton.className = "button text-danger compact";
     deleteButton.textContent = "删除";
     deleteButton.addEventListener("click", () => deleteManagedAccount(account.uid));
-    row.append(main, deleteButton);
+    actions.append(renameButton, deleteButton);
+    row.append(main, actions);
     elements.manageAccountList.append(row);
   }
 }
@@ -405,6 +458,7 @@ function computeAccountSummary(account) {
   return {
     uid: account.uid,
     name: displayName(account),
+    username: String(account.username || "").trim(),
     hour: hourDelta,
     today: todayDelta,
     yesterday: yesterdayDelta,
@@ -428,8 +482,8 @@ function sortSummaryRows(rows) {
   const factor = direction === "asc" ? 1 : -1;
 
   return rows.slice().sort((left, right) => {
-    if (key === "name") {
-      return left.name.localeCompare(right.name, "zh-CN") * factor;
+    if (key === "name" || key === "username") {
+      return left[key].localeCompare(right[key], "zh-CN") * factor;
     }
     const leftValue = key === "uid" ? left.uid : left[key];
     const rightValue = key === "uid" ? right.uid : right[key];
@@ -462,7 +516,7 @@ function renderAccountSummaryTable() {
   if (!rows.length) {
     const tr = document.createElement("tr");
     const td = document.createElement("td");
-    td.colSpan = 5;
+    td.colSpan = 6;
     td.textContent = "还没有监控账号";
     td.style.color = "var(--muted)";
     td.style.textAlign = "center";
@@ -483,12 +537,18 @@ function renderAccountSummaryTable() {
     uidCell.className = "uid-cell";
     uidCell.textContent = String(row.uid);
 
+    const usernameCell = document.createElement("td");
+    usernameCell.className = "username-cell";
+    usernameCell.textContent = row.username
+      ? `@${row.username}`
+      : "--";
+
     const values = [
       row.hour,
       row.today,
       row.yesterday,
     ];
-    const cells = [nameCell, uidCell];
+    const cells = [nameCell, usernameCell, uidCell];
     for (const value of values) {
       const cell = document.createElement("td");
       const delta = formatDelta(value);
@@ -518,7 +578,7 @@ function renderAccountChips() {
     if (account.uid === state.selectedUid) button.classList.add("active");
 
     const name = document.createElement("span");
-    name.textContent = displayName(account);
+    name.textContent = displayAccountLabel(account);
 
     const count = document.createElement("span");
     count.className = "count";
@@ -587,10 +647,10 @@ function renderOverview() {
   setDeltaClass(elements.metricDay, deltas.day);
 
   elements.hourlyChartTitle.textContent = account
-    ? `${displayName(account)}·小时新增`
+    ? `${displayAccountLabel(account)}·小时新增`
     : "暂无监控账号";
   elements.dailyChartTitle.textContent = account
-    ? `${displayName(account)}·总粉丝（天）`
+    ? `${displayAccountLabel(account)}·总粉丝（天）`
     : "暂无监控账号";
 }
 

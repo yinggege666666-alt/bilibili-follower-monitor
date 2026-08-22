@@ -895,6 +895,18 @@ tbody tr:hover {
   font-size: 12px;
 }
 
+.manage-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  flex: 0 0 auto;
+}
+
+.username-cell {
+  color: var(--accent-ink);
+  font-weight: 650;
+}
+
 @media (max-width: 820px) {
   .app-shell {
     width: 100%;

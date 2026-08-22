@@ -40,6 +40,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS accounts (
     uid INTEGER PRIMARY KEY,
     name TEXT NOT NULL DEFAULT '',
+    username TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL
 );
 
@@ -206,32 +207,49 @@ class MonitorStorage:
     def initialize(self) -> None:
         with closing(self.connect()) as connection:
             connection.executescript(SCHEMA)
-
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(accounts)")
+            }
+            if "username" not in columns:
+                connection.execute(
+                    "ALTER TABLE accounts ADD COLUMN username TEXT NOT NULL DEFAULT ''"
+                )
     def save_snapshot(
         self,
         uid: int,
         follower_count: int,
         name: str | None = None,
+        username: str | None = None,
         collected_at: datetime | None = None,
     ) -> dict[str, Any]:
-        return self.save_hourly_snapshot(uid, follower_count, name, collected_at)
+        return self.save_hourly_snapshot(
+            uid,
+            follower_count,
+            name,
+            username,
+            collected_at,
+        )
 
     def _upsert_account(
         self,
         connection: sqlite3.Connection,
         uid: int,
         name: str | None,
+        username: str | None,
         timestamp: str,
     ) -> None:
         connection.execute(
             """
-            INSERT INTO accounts(uid, name, created_at)
-            VALUES (?, ?, ?)
+            INSERT INTO accounts(uid, name, username, created_at)
+            VALUES (?, ?, ?, ?)
             ON CONFLICT(uid) DO UPDATE SET
                 name = CASE WHEN excluded.name <> ''
-                    THEN excluded.name ELSE accounts.name END
+                    THEN excluded.name ELSE accounts.name END,
+                username = CASE WHEN excluded.username <> ''
+                    THEN excluded.username ELSE accounts.username END
             """,
-            (uid, name or "", timestamp),
+            (uid, name or "", username or "", timestamp),
         )
 
     def save_hourly_snapshot(
@@ -239,6 +257,7 @@ class MonitorStorage:
         uid: int,
         follower_count: int,
         name: str | None = None,
+        username: str | None = None,
         collected_at: datetime | None = None,
     ) -> dict[str, Any]:
         now = collected_at or datetime.now(timezone.utc)
@@ -247,7 +266,7 @@ class MonitorStorage:
         timestamp = now.isoformat(timespec="seconds")
 
         with closing(self.connect()) as connection, connection:
-            self._upsert_account(connection, uid, name, timestamp)
+            self._upsert_account(connection, uid, name, username, timestamp)
             connection.execute(
                 """
                 INSERT INTO follower_history(
@@ -267,6 +286,7 @@ class MonitorStorage:
         uid: int,
         follower_count: int,
         name: str | None = None,
+        username: str | None = None,
         collected_at: datetime | None = None,
     ) -> dict[str, Any]:
         now = collected_at or datetime.now(timezone.utc)
@@ -275,7 +295,7 @@ class MonitorStorage:
         timestamp = now.isoformat(timespec="seconds")
 
         with closing(self.connect()) as connection, connection:
-            self._upsert_account(connection, uid, name, timestamp)
+            self._upsert_account(connection, uid, name, username, timestamp)
             connection.execute(
                 """
                 INSERT INTO daily_history(
@@ -297,6 +317,7 @@ class MonitorStorage:
                 SELECT
                     a.uid,
                     a.name,
+                    a.username,
                     a.created_at,
                     h.follower_count AS latest_count,
                     h.collected_at AS latest_at,
@@ -343,6 +364,7 @@ class MonitorStorage:
                 SELECT
                     a.uid,
                     a.name,
+                    a.username,
                     a.created_at,
                     h.follower_count AS latest_count,
                     h.collected_at AS latest_at,
@@ -469,6 +491,7 @@ def export_github_data(storage: MonitorStorage, project_root: Path) -> None:
             {
                 "uid": uid,
                 "name": str(account.get("name") or ""),
+                "username": str(account.get("username") or ""),
                 "hourlyHistory": hourly,
                 "dailyHistory": daily,
             }
@@ -638,11 +661,12 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
     def _collect_account(self, uid: int, name: str | None = None) -> dict[str, Any]:
         with self.collect_lock:
             follower_count = self.client.get_follower_total(uid)
-            account_name = name or self.client.get_account_name(uid) or f"UID {uid}"
+            username = self.client.get_account_name(uid)
             summary = self.storage.save_snapshot(
                 uid=uid,
                 follower_count=follower_count,
-                name=account_name,
+                name=name,
+                username=username,
             )
         self._schedule_sync()
         return summary
@@ -830,22 +854,21 @@ class HourlyScheduler:
             try:
                 with self.collect_lock:
                     follower_count = self.client.get_follower_total(uid)
-                    name = (
-                        self.client.get_account_name(uid)
-                        or account.get("name")
-                        or f"UID {uid}"
-                    )
+                    name = str(account.get("name") or "")
+                    username = self.client.get_account_name(uid)
                     if kind == "daily":
                         self.storage.save_daily_snapshot(
                             uid=uid,
                             follower_count=follower_count,
                             name=name,
+                            username=username,
                         )
                     else:
                         self.storage.save_hourly_snapshot(
                             uid=uid,
                             follower_count=follower_count,
                             name=name,
+                            username=username,
                         )
             except BilibiliAPIError:
                 continue

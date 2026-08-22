@@ -66,10 +66,6 @@ def collect(mode: str = "hourly") -> None:
             continue
 
         name = str(item.get("name") or "").strip()
-        if not name:
-            name = client.get_account_name(uid)
-        if not name:
-            name = f"UID {uid}"
 
         existing = existing_by_uid.get(uid)
         hourly_history = (
@@ -81,6 +77,13 @@ def collect(mode: str = "hourly") -> None:
             if existing else []
         )
         collected_at_text = collected_at.isoformat(timespec="seconds")
+        username = str(item.get("username") or "").strip()
+        try:
+            username = client.get_account_name(uid) or username
+        except Exception:
+            pass
+        if not username and existing:
+            username = str(existing.get("username") or "").strip()
 
         if mode == "daily":
             date_key = collected_at.astimezone(LOCAL_TIMEZONE).strftime("%Y-%m-%d")
@@ -110,6 +113,7 @@ def collect(mode: str = "hourly") -> None:
             {
                 "uid": uid,
                 "name": name,
+                "username": username,
                 "hourlyHistory": hourly_history,
                 "dailyHistory": daily_history,
             }
