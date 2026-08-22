@@ -564,6 +564,165 @@ tbody tr:hover {
   transform: translateY(0);
 }
 
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+}
+
+.modal[hidden] {
+  display: none;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(17, 25, 38, 0.46);
+}
+
+.modal-card {
+  position: relative;
+  width: min(720px, 100%);
+  max-height: min(760px, calc(100vh - 44px));
+  overflow: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.22);
+}
+
+.modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.modal-head h2 {
+  margin: 0;
+  font-size: 19px;
+}
+
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  color: var(--muted);
+  background: transparent;
+  border: 0;
+  border-radius: 7px;
+}
+
+.icon-button:hover {
+  color: var(--text);
+  background: var(--surface-soft);
+}
+
+.icon-button svg {
+  width: 19px;
+  height: 19px;
+}
+
+.modal-body {
+  padding: 18px 20px 22px;
+}
+
+.token-box {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.token-box label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.token-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 9px;
+}
+
+.token-row input {
+  min-width: 0;
+  height: 42px;
+  padding: 0 12px;
+  color: var(--text);
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  outline: none;
+}
+
+.token-row input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 155, 142, 0.13);
+}
+
+.manage-divider {
+  height: 1px;
+  margin: 18px 0;
+  background: var(--line);
+}
+
+.manage-add {
+  display: grid;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(190px, 1.3fr) auto;
+  gap: 10px;
+  align-items: end;
+}
+
+.manage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.managed-account {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 54px;
+  padding: 9px 12px;
+  background: var(--surface-soft);
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+
+.managed-account-main {
+  min-width: 0;
+}
+
+.managed-account-main strong {
+  display: block;
+  overflow: hidden;
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.managed-account-main span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+@media (max-width: 620px) {
+  .token-row,
+  .manage-add {
+    grid-template-columns: 1fr;
+  }
+}
+
 .toast.error {
   background: #9f3643;
 }
