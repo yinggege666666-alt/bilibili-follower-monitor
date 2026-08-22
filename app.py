@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import sqlite3
 import subprocess
@@ -485,45 +486,87 @@ def export_github_data(storage: MonitorStorage, project_root: Path) -> None:
 
 
 def sync_to_github(project_root: Path) -> None:
-    if not (project_root / ".git").is_dir():
+    repo = _github_repo_slug(project_root)
+    if not repo:
         return
+    for relative_path in ("config.json", "docs/data.json"):
+        file_path = project_root / relative_path
+        if not file_path.is_file():
+            continue
+        try:
+            _put_github_file(repo, relative_path, file_path)
+        except (OSError, ValueError):
+            continue
+
+
+def _github_repo_slug(project_root: Path) -> str | None:
+    safe = f"safe.directory={project_root}"
+    result = subprocess.run(
+        ["git", "-c", safe, "-C", str(project_root), "remote", "get-url", "origin"],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode != 0:
+        return None
+    url = result.stdout.strip()
+    for prefix in ("https://github.com/", "git@github.com:"):
+        if url.startswith(prefix):
+            path = url[len(prefix):]
+            if path.endswith(".git"):
+                path = path[:-4]
+            return path.strip("/")
+    return None
+
+
+def _github_file_sha(repo: str, path: str) -> str | None:
+    result = subprocess.run(
+        ["gh", "api", f"repos/{repo}/contents/{path}"],
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    if result.returncode != 0:
+        return None
     try:
-        safe = f"safe.directory={project_root}"
-        subprocess.run(
-            ["git", "-c", safe, "-C", str(project_root), "add", "config.json", "docs/data.json"],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        subprocess.run(
-            [
-                "git",
-                "-c",
-                safe,
-                "-C",
-                str(project_root),
-                "commit",
-                "-m",
-                "chore: sync follower data",
-            ],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-        subprocess.run(
-            ["git", "-c", safe, "-C", str(project_root), "push", "origin", "main"],
-            check=False,
-            capture_output=True,
-            text=True,
-            encoding="utf-8",
-            errors="replace",
-        )
-    except OSError:
-        return
+        data = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return data.get("sha") if isinstance(data, dict) else None
+
+
+def _put_github_file(repo: str, path: str, file_path: Path) -> None:
+    content = file_path.read_bytes()
+    encoded = base64.b64encode(content).decode("ascii")
+    sha = _github_file_sha(repo, path)
+    endpoint = f"repos/{repo}/contents/{path}"
+    command = [
+        "gh",
+        "api",
+        "-X",
+        "PUT",
+        endpoint,
+        "-f",
+        "message=chore: sync follower data",
+        "-f",
+        f"content={encoded}",
+        "-f",
+        "branch=main",
+    ]
+    if sha:
+        command.extend(["-f", f"sha={sha}"])
+    subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
 
 
 WEB_DIR = Path(__file__).resolve().parent / "web"
