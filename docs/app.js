@@ -21,9 +21,21 @@ const elements = {
   dailyChart: document.getElementById("dailyChart"),
   dailyChartEmpty: document.getElementById("dailyChartEmpty"),
   historyBody: document.getElementById("historyBody"),
+  openManageBtn: document.getElementById("openManageBtn"),
+  closeManageBtn: document.getElementById("closeManageBtn"),
+  manageModal: document.getElementById("manageModal"),
+  tokenInput: document.getElementById("tokenInput"),
+  saveTokenBtn: document.getElementById("saveTokenBtn"),
+  manageUidInput: document.getElementById("manageUidInput"),
+  manageNameInput: document.getElementById("manageNameInput"),
+  addManagedAccountBtn: document.getElementById("addManagedAccountBtn"),
+  manageAccountList: document.getElementById("manageAccountList"),
+  toast: document.getElementById("toast"),
 };
 
 const numberFormat = new Intl.NumberFormat("zh-CN");
+const GITHUB_REPO = "yinggege666666-alt/bilibili-follower-monitor";
+const TOKEN_KEY = "bili-monitor-github-token";
 
 function formatNumber(value) {
   return numberFormat.format(value);
@@ -55,6 +67,181 @@ function formatHour(value) {
 function formatDate(value) {
   const [, month, day] = String(value).split("-");
   return `${month}-${day}`;
+}
+
+function showToast(message, type = "success") {
+  elements.toast.textContent = message;
+  elements.toast.classList.toggle("error", type === "error");
+  elements.toast.classList.add("show");
+  window.clearTimeout(showToast.timer);
+  showToast.timer = window.setTimeout(() => {
+    elements.toast.classList.remove("show");
+  }, 3600);
+}
+
+function openManageModal() {
+  elements.tokenInput.value = localStorage.getItem(TOKEN_KEY) || "";
+  elements.manageModal.hidden = false;
+  renderManagedAccounts();
+}
+
+function closeManageModal() {
+  elements.manageModal.hidden = true;
+}
+
+function saveToken() {
+  const token = elements.tokenInput.value.trim();
+  if (!token) {
+    showToast("请先粘贴 GitHub 访问令牌", "error");
+    return;
+  }
+  localStorage.setItem(TOKEN_KEY, token);
+  elements.tokenInput.value = token;
+  showToast("令牌已保存在当前浏览器");
+  renderManagedAccounts();
+}
+
+function getToken() {
+  return localStorage.getItem(TOKEN_KEY) || "";
+}
+
+async function githubRequest(path, options = {}) {
+  const token = getToken();
+  if (!token) throw new Error("请先保存 GitHub 访问令牌");
+  const response = await fetch(`https://api.github.com${path}`, {
+    ...options,
+    headers: {
+      Accept: "application/vnd.github+json",
+      Authorization: `Bearer ${token}`,
+      "X-GitHub-Api-Version": "2022-11-28",
+      ...(options.headers || {}),
+    },
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new Error(data.message || `GitHub 请求失败（${response.status}）`);
+  }
+  return data;
+}
+
+function decodeBase64(value) {
+  return decodeURIComponent(
+    atob(String(value).replace(/\s/g, ""))
+      .split("")
+      .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+      .join(""),
+  );
+}
+
+function encodeBase64(value) {
+  return btoa(unescape(encodeURIComponent(value)));
+}
+
+async function readConfig() {
+  const data = await githubRequest(`/repos/${GITHUB_REPO}/contents/config.json`);
+  if (!data.content) throw new Error("无法读取 config.json");
+  return JSON.parse(decodeBase64(data.content));
+}
+
+async function writeConfig(config) {
+  const file = await githubRequest(`/repos/${GITHUB_REPO}/contents/config.json`);
+  const body = {
+    message: "chore: update monitored accounts",
+    content: encodeBase64(JSON.stringify(config, null, 2)),
+    branch: "main",
+  };
+  if (file.sha) body.sha = file.sha;
+  await githubRequest(`/repos/${GITHUB_REPO}/contents/config.json`, {
+    method: "PUT",
+    body: JSON.stringify(body),
+  });
+}
+
+async function triggerCollectWorkflow() {
+  await githubRequest(
+    `/repos/${GITHUB_REPO}/actions/workflows/collect.yml/dispatches`,
+    {
+      method: "POST",
+      body: JSON.stringify({ ref: "main" }),
+    },
+  );
+}
+
+async function addManagedAccount() {
+  const uidText = elements.manageUidInput.value.trim();
+  const uid = Number(uidText);
+  if (!/^[1-9]\d{0,15}$/.test(uidText) || uid <= 0) {
+    showToast("请输入有效的 B站 UID", "error");
+    return;
+  }
+  const name = elements.manageNameInput.value.trim();
+  try {
+    const config = await readConfig();
+    const accounts = config.accounts || [];
+    const existing = accounts.find((account) => account.uid === uid);
+    if (existing) {
+      existing.name = name || existing.name || "";
+    } else {
+      accounts.push({ uid, name });
+    }
+    await writeConfig({ accounts });
+    await triggerCollectWorkflow();
+    elements.manageUidInput.value = "";
+    elements.manageNameInput.value = "";
+    showToast(`已添加 UID ${uid}，正在更新数据`);
+    renderManagedAccounts();
+    window.setTimeout(refresh, 22000);
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+async function deleteManagedAccount(uid) {
+  const confirmed = window.confirm(`确定移除 UID ${uid} 吗？`);
+  if (!confirmed) return;
+  try {
+    const config = await readConfig();
+    config.accounts = (config.accounts || []).filter((account) => account.uid !== uid);
+    await writeConfig(config);
+    await triggerCollectWorkflow();
+    showToast(`已移除 UID ${uid}`);
+    renderManagedAccounts();
+    window.setTimeout(refresh, 22000);
+  } catch (error) {
+    showToast(error.message, "error");
+  }
+}
+
+function renderManagedAccounts() {
+  elements.manageAccountList.replaceChildren();
+  const accounts = state.accounts;
+  if (!accounts.length) {
+    const empty = document.createElement("p");
+    empty.className = "helper";
+    empty.textContent = "还没有账号，输入 UID 后点击添加。";
+    elements.manageAccountList.append(empty);
+    return;
+  }
+
+  for (const account of accounts) {
+    const row = document.createElement("div");
+    row.className = "managed-account";
+    const main = document.createElement("div");
+    main.className = "managed-account-main";
+    const name = document.createElement("strong");
+    name.textContent = displayName(account);
+    const uid = document.createElement("span");
+    uid.textContent = `UID ${account.uid}`;
+    main.append(name, uid);
+
+    const deleteButton = document.createElement("button");
+    deleteButton.type = "button";
+    deleteButton.className = "button text-danger compact";
+    deleteButton.textContent = "删除";
+    deleteButton.addEventListener("click", () => deleteManagedAccount(account.uid));
+    row.append(main, deleteButton);
+    elements.manageAccountList.append(row);
+  }
 }
 
 function renderAccountChips() {
@@ -448,6 +635,20 @@ async function refresh() {
     elements.connectionStatus.classList.add("error");
   }
 }
+
+elements.openManageBtn.addEventListener("click", openManageModal);
+elements.closeManageBtn.addEventListener("click", closeManageModal);
+elements.saveTokenBtn.addEventListener("click", saveToken);
+elements.addManagedAccountBtn.addEventListener("click", addManagedAccount);
+elements.manageModal.addEventListener("click", (event) => {
+  if (event.target.closest("[data-close-modal]")) closeManageModal();
+});
+elements.manageUidInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") addManagedAccount();
+});
+elements.manageNameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") addManagedAccount();
+});
 
 refresh();
 window.setInterval(() => {
