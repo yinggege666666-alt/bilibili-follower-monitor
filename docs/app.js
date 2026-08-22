@@ -4,10 +4,18 @@ const state = {
   selectedUid: null,
   hourlyHistory: [],
   dailyHistory: [],
+  days: 30,
 };
 
 const elements = {
   connectionStatus: document.getElementById("connectionStatus"),
+  statusLine: document.getElementById("statusLine"),
+  refreshBtn: document.getElementById("refreshBtn"),
+  addForm: document.getElementById("addForm"),
+  addUidInput: document.getElementById("addUidInput"),
+  addNameInput: document.getElementById("addNameInput"),
+  message: document.getElementById("message"),
+  periodButtons: document.querySelectorAll("#periodButtons button"),
   accountBand: document.getElementById("accountBand"),
   metricCurrent: document.getElementById("metricCurrent"),
   metricLatestTime: document.getElementById("metricLatestTime"),
@@ -167,14 +175,13 @@ async function triggerCollectWorkflow() {
   );
 }
 
-async function addManagedAccount() {
-  const uidText = elements.manageUidInput.value.trim();
+async function submitAddAccount(uidText, name) {
   const uid = Number(uidText);
   if (!/^[1-9]\d{0,15}$/.test(uidText) || uid <= 0) {
     showToast("请输入有效的 B站 UID", "error");
     return;
   }
-  const name = elements.manageNameInput.value.trim();
+  name = name.trim();
   try {
     const config = await readConfig();
     const accounts = config.accounts || [];
@@ -186,14 +193,29 @@ async function addManagedAccount() {
     }
     await writeConfig({ accounts });
     await triggerCollectWorkflow();
-    elements.manageUidInput.value = "";
-    elements.manageNameInput.value = "";
     showToast(`已添加 UID ${uid}，正在更新数据`);
     renderManagedAccounts();
-    window.setTimeout(refresh, 22000);
+    window.setTimeout(refresh, 35000);
   } catch (error) {
     showToast(error.message, "error");
   }
+}
+
+async function addManagedAccount() {
+  const uidText = elements.manageUidInput.value.trim();
+  const name = elements.manageNameInput.value.trim();
+  await submitAddAccount(uidText, name);
+  elements.manageUidInput.value = "";
+  elements.manageNameInput.value = "";
+}
+
+async function addAccountFromTop(event) {
+  event.preventDefault();
+  const uidText = elements.addUidInput.value.trim();
+  const name = elements.addNameInput.value.trim();
+  await submitAddAccount(uidText, name);
+  elements.addUidInput.value = "";
+  elements.addNameInput.value = "";
 }
 
 async function deleteManagedAccount(uid) {
@@ -206,7 +228,7 @@ async function deleteManagedAccount(uid) {
     await triggerCollectWorkflow();
     showToast(`已移除 UID ${uid}`);
     renderManagedAccounts();
-    window.setTimeout(refresh, 22000);
+    window.setTimeout(refresh, 35000);
   } catch (error) {
     showToast(error.message, "error");
   }
@@ -529,10 +551,17 @@ function drawLineChart(svg, emptyElement, data, options = {}) {
 }
 
 function renderCharts() {
-  const hourlyDelta = state.hourlyHistory
+  const hourlyHistory = state.days
+    ? state.hourlyHistory.slice(-state.days * 24)
+    : state.hourlyHistory;
+  const dailyHistory = state.days
+    ? state.dailyHistory.slice(-state.days)
+    : state.dailyHistory;
+
+  const hourlyDelta = hourlyHistory
     .map((point, index) => {
       if (index === 0) return null;
-      const previous = state.hourlyHistory[index - 1];
+      const previous = hourlyHistory[index - 1];
       const delta = point.count - previous.count;
       return {
         label: point.hour,
@@ -542,7 +571,7 @@ function renderCharts() {
     })
     .filter(Boolean);
 
-  const dailyTotal = state.dailyHistory.map((point) => ({
+  const dailyTotal = dailyHistory.map((point) => ({
     label: point.date,
     value: point.count,
     tooltip: `${formatNumber(point.count)} 粉丝`,
@@ -608,6 +637,14 @@ function render() {
   renderOverview();
   renderCharts();
   renderTable();
+  renderStatus();
+}
+
+function renderStatus() {
+  const latest = state.hourlyHistory.at(-1);
+  elements.statusLine.textContent = latest
+    ? `上次更新：${formatHour(latest.hour)} · 云端每小时自动更新`
+    : "正在等待首次采集 · 云端每小时自动更新";
 }
 
 async function loadData() {
@@ -648,6 +685,16 @@ elements.manageUidInput.addEventListener("keydown", (event) => {
 });
 elements.manageNameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") addManagedAccount();
+});
+elements.addForm.addEventListener("submit", addAccountFromTop);
+elements.refreshBtn.addEventListener("click", refresh);
+elements.periodButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    elements.periodButtons.forEach((item) => item.classList.remove("active"));
+    button.classList.add("active");
+    state.days = Number(button.dataset.days);
+    renderCharts();
+  });
 });
 
 refresh();
