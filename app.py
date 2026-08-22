@@ -183,11 +183,12 @@ class BilibiliClient:
     def get_account_name(self, uid: int) -> str:
         try:
             data = self._api_data(
-                "/x/space/wbi/acc/info",
-                self._sign_wbi({"mid": uid}),
+                "/x/web-interface/card",
+                {"mid": uid},
                 referer=f"https://space.bilibili.com/{uid}/",
             )
-            name = data.get("name")
+            card = data.get("card")
+            name = card.get("name") if isinstance(card, dict) else data.get("name")
             return name if isinstance(name, str) and name else ""
         except BilibiliAPIError:
             return ""
