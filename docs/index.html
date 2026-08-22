@@ -26,12 +26,19 @@
       </div>
       <div class="top-actions">
         <span id="connectionStatus" class="status-pill">加载中</span>
+        <button id="openManageBtn" class="button ghost" type="button">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M4 21v-7M12 21v-12M20 21V8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            <path d="M2 21h20" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          管理账号
+        </button>
       </div>
     </header>
 
     <main>
       <section class="add-band">
-        <p class="helper">这是 GitHub Pages 只读监控页，数据由 GitHub Actions 每小时自动采集并写入仓库。</p>
+        <p class="helper">这是公开查看页。点击右上角“管理账号”可以添加或删除要监控的 UID。</p>
       </section>
 
       <section class="account-band" id="accountBand" aria-label="已添加账号"></section>
@@ -128,6 +135,55 @@
         </div>
       </section>
     </main>
+  </div>
+
+  <div id="manageModal" class="modal" hidden>
+    <div class="modal-backdrop" data-close-modal></div>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="manageTitle">
+      <div class="modal-head">
+        <div>
+          <p class="eyebrow">GitHub 管理</p>
+          <h2 id="manageTitle">管理监控账号</h2>
+        </div>
+        <button id="closeManageBtn" class="icon-button" type="button" aria-label="关闭">
+          <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <div class="token-box">
+          <label for="tokenInput">GitHub 访问令牌</label>
+          <div class="token-row">
+            <input id="tokenInput" type="password" placeholder="粘贴仓库级 Personal Access Token" autocomplete="off">
+            <button id="saveTokenBtn" class="button primary compact" type="button">保存</button>
+          </div>
+          <p class="helper">令牌只保存在当前浏览器，不会写入页面或仓库。需要对该仓库具备 Contents 和 Workflows 权限。</p>
+        </div>
+
+        <div class="manage-divider"></div>
+
+        <div class="manage-add">
+          <div class="field">
+            <label for="manageUidInput">B站 UID</label>
+            <input id="manageUidInput" inputmode="numeric" placeholder="例如：946974" autocomplete="off">
+          </div>
+          <div class="field field-name">
+            <label for="manageNameInput">备注名 <span>可选</span></label>
+            <input id="manageNameInput" placeholder="账号名称" autocomplete="off">
+          </div>
+          <button id="addManagedAccountBtn" class="button primary" type="button">
+            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+            </svg>
+            添加
+          </button>
+        </div>
+
+        <div class="manage-list" id="manageAccountList"></div>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
