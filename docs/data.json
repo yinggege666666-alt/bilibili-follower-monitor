@@ -1,5 +1,5 @@
 {
-  "updatedAt": "2026-08-23T00:05:31+00:00",
+  "updatedAt": "2026-08-23T00:06:39+00:00",
   "accounts": [
     {
       "uid": 6465925620,
@@ -8,14 +8,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 0
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 0
         }
       ]
@@ -27,14 +27,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 2032
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 2032
         }
       ]
@@ -46,14 +46,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 3415
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 3415
         }
       ]
@@ -65,14 +65,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1265
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1265
         }
       ]
@@ -84,14 +84,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 720
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 720
         }
       ]
@@ -103,14 +103,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1702
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1702
         }
       ]
@@ -122,14 +122,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 958
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 958
         }
       ]
@@ -141,14 +141,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1039
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1039
         }
       ]
@@ -160,14 +160,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1015
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1015
         }
       ]
@@ -179,14 +179,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1038
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1038
         }
       ]
@@ -198,14 +198,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1021
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1021
         }
       ]
@@ -217,14 +217,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1060
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1060
         }
       ]
@@ -236,14 +236,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 1014
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 1014
         }
       ]
@@ -255,14 +255,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 715
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 715
         }
       ]
@@ -274,14 +274,14 @@
       "hourlyHistory": [
         {
           "hour": "2026-08-23T08",
-          "collectedAt": "2026-08-23T00:05:26+00:00",
+          "collectedAt": "2026-08-23T00:06:28+00:00",
           "count": 3
         }
       ],
       "dailyHistory": [
         {
           "date": "2026-08-23",
-          "collectedAt": "2026-08-23T00:05:31+00:00",
+          "collectedAt": "2026-08-23T00:06:39+00:00",
           "count": 3
         }
       ]
