@@ -21,8 +21,13 @@ MAX_DAILY_POINTS = 3650
 
 def load_json(path: Path) -> dict:
     if path.is_file():
-        with path.open("r", encoding="utf-8") as file:
-            return json.load(file)
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                value = json.load(file)
+        except (OSError, ValueError, TypeError):
+            print(f"读取 {path} 失败，将重建数据文件")
+            return {}
+        return value if isinstance(value, dict) else {}
     return {}
 
 

@@ -88,6 +88,16 @@ function formatHour(value) {
   return `${month}-${day} ${hour}:00`;
 }
 
+function formatUpdatedAt(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+  return `${month}-${day} ${hour}:${minute}`;
+}
+
 function formatDate(value) {
   const [, month, day] = String(value).split("-");
   return `${month}-${day}`;
@@ -631,9 +641,11 @@ function renderOverview() {
   elements.metricCurrent.textContent = latest
     ? formatNumber(latest.count)
     : "--";
-  elements.metricLatestTime.textContent = latest
-    ? `更新于 ${formatHour(latest.hour)}`
-    : "尚未记录";
+  elements.metricLatestTime.textContent = state.updatedAt
+    ? `更新于 ${formatUpdatedAt(state.updatedAt)}`
+    : latest
+      ? `更新于 ${formatHour(latest.hour)}`
+      : "尚未记录";
   elements.metricCount.textContent = String(state.hourlyHistory.length);
 
   elements.metricHour.textContent = deltas.hour == null
@@ -960,8 +972,13 @@ function render() {
 
 function renderStatus() {
   const latest = state.hourlyHistory.at(-1);
-  elements.statusLine.textContent = latest
-    ? `上次更新：${formatHour(latest.hour)} · 云端每小时自动更新`
+  const latestText = state.updatedAt
+    ? formatUpdatedAt(state.updatedAt)
+    : latest
+      ? formatHour(latest.hour)
+      : "";
+  elements.statusLine.textContent = latestText
+    ? `上次更新：${latestText} · 云端每小时自动更新`
     : "正在等待首次采集 · 云端每小时自动更新";
 }
 
