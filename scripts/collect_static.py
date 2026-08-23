@@ -57,6 +57,7 @@ def collect(mode: str = "hourly") -> None:
     local_hour = collected_at.astimezone(LOCAL_TIMEZONE).strftime("%Y-%m-%dT%H")
 
     output_accounts = []
+    data_changed = False
     for item in configured_accounts:
         try:
             uid = int(item["uid"])
@@ -102,17 +103,19 @@ def collect(mode: str = "hourly") -> None:
             else:
                 daily_history.append(daily_snapshot)
                 daily_history = daily_history[-MAX_DAILY_POINTS:]
+            data_changed = True
         else:
-            hourly_snapshot = {
-                "hour": local_hour,
-                "collectedAt": collected_at_text,
-                "count": follower_count,
-            }
             if hourly_history and hourly_history[-1].get("hour") == local_hour:
-                hourly_history[-1] = hourly_snapshot
+                print(f"UID {uid}：本小时已有快照，跳过")
             else:
+                hourly_snapshot = {
+                    "hour": local_hour,
+                    "collectedAt": collected_at_text,
+                    "count": follower_count,
+                }
                 hourly_history.append(hourly_snapshot)
                 hourly_history = hourly_history[-MAX_HOURLY_POINTS:]
+                data_changed = True
 
         output_accounts.append(
             {
@@ -125,11 +128,12 @@ def collect(mode: str = "hourly") -> None:
         )
         print(f"UID {uid}：{follower_count}")
 
-    data = {
-        "updatedAt": collected_at.isoformat(timespec="seconds"),
-        "accounts": output_accounts,
-    }
-    save_json(DATA_PATH, data)
+    if data_changed:
+        data = {
+            "updatedAt": collected_at.isoformat(timespec="seconds"),
+            "accounts": output_accounts,
+        }
+        save_json(DATA_PATH, data)
 
 
 if __name__ == "__main__":

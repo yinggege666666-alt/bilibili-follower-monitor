@@ -2,7 +2,7 @@ name: Collect and publish Bilibili followers
 
 on:
   schedule:
-    - cron: "17 * * * *"
+    - cron: "*/15 * * * *"
     - cron: "30 16 * * *"
   push:
     branches:
@@ -35,7 +35,7 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "30 16 * * *" ]; then
             echo "MODE=daily" >> "$GITHUB_ENV"
-          elif [ "${{ github.event.schedule }}" = "17 * * * *" ]; then
+          elif [ "${{ github.event.schedule }}" = "*/15 * * * *" ]; then
             echo "MODE=hourly" >> "$GITHUB_ENV"
           else
             echo "MODE=both" >> "$GITHUB_ENV"
