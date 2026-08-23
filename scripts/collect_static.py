@@ -55,21 +55,6 @@ def collect(mode: str = "hourly") -> None:
     collected_at = datetime.now(timezone.utc)
     local_hour = collected_at.astimezone(LOCAL_TIMEZONE).strftime("%Y-%m-%dT%H")
 
-    if mode == "hourly":
-        configured_uids = []
-        for item in configured_accounts:
-            try:
-                configured_uids.append(int(item["uid"]))
-            except (KeyError, TypeError, ValueError):
-                continue
-        if configured_uids and all(
-            existing_by_uid.get(uid, {}).get("hourlyHistory")
-            and existing_by_uid[uid]["hourlyHistory"][-1].get("hour") == local_hour
-            for uid in configured_uids
-        ):
-            print("所有账号本小时已有快照，跳过")
-            return
-
     client = BilibiliClient()
     output_accounts = []
     data_changed = False
@@ -121,7 +106,12 @@ def collect(mode: str = "hourly") -> None:
             data_changed = True
         else:
             if hourly_history and hourly_history[-1].get("hour") == local_hour:
-                print(f"UID {uid}：本小时已有快照，跳过")
+                hourly_history[-1] = {
+                    "hour": local_hour,
+                    "collectedAt": collected_at_text,
+                    "count": follower_count,
+                }
+                data_changed = True
             else:
                 hourly_snapshot = {
                     "hour": local_hour,

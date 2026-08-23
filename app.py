@@ -895,7 +895,7 @@ class HourlyScheduler:
             hour_key = now.strftime("%Y-%m-%dT%H")
             date_key = now.strftime("%Y-%m-%d")
 
-            if now.minute == 10 and hour_key != self._last_hour_key:
+            if now.minute == 30 and hour_key != self._last_hour_key:
                 self.collect_accounts("hourly")
                 self._last_hour_key = hour_key
 

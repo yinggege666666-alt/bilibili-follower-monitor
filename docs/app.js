@@ -85,7 +85,7 @@ function formatHour(value) {
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
   const hour = String(date.getHours()).padStart(2, "0");
-  return `${month}-${day} ${hour}:00`;
+  return `${month}-${day} ${hour}:30`;
 }
 
 function formatUpdatedAt(value) {
@@ -978,8 +978,8 @@ function renderStatus() {
       ? formatHour(latest.hour)
       : "";
   elements.statusLine.textContent = latestText
-    ? `上次更新：${latestText} · 云端每小时自动更新`
-    : "正在等待首次采集 · 云端每小时自动更新";
+    ? `上次更新：${latestText} · GitHub 每小时 30 分自动采集`
+    : "正在等待首次采集 · GitHub 每小时 30 分自动采集";
 }
 
 async function loadData() {

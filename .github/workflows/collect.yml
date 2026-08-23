@@ -2,7 +2,9 @@ name: Collect and publish Bilibili followers
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    # 北京时间每小时 30 分采集小时快照。
+    - cron: "30 * * * *"
+    # 北京时间每天 00:30 采集每日快照。
     - cron: "30 16 * * *"
   push:
     branches:
@@ -36,7 +38,7 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "30 16 * * *" ]; then
             echo "MODE=daily" >> "$GITHUB_ENV"
-          elif [ "${{ github.event.schedule }}" = "*/5 * * * *" ]; then
+          elif [ "${{ github.event.schedule }}" = "30 * * * *" ]; then
             echo "MODE=hourly" >> "$GITHUB_ENV"
           else
             echo "MODE=both" >> "$GITHUB_ENV"
