@@ -2,7 +2,7 @@ name: Collect and publish Bilibili followers
 
 on:
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "*/5 * * * *"
     - cron: "30 16 * * *"
   push:
     branches:
@@ -15,6 +15,7 @@ permissions:
   contents: write
   pages: write
   id-token: write
+  actions: write
 
 jobs:
   collect:
@@ -35,7 +36,7 @@ jobs:
         run: |
           if [ "${{ github.event.schedule }}" = "30 16 * * *" ]; then
             echo "MODE=daily" >> "$GITHUB_ENV"
-          elif [ "${{ github.event.schedule }}" = "*/15 * * * *" ]; then
+          elif [ "${{ github.event.schedule }}" = "*/5 * * * *" ]; then
             echo "MODE=hourly" >> "$GITHUB_ENV"
           else
             echo "MODE=both" >> "$GITHUB_ENV"
@@ -62,6 +63,12 @@ jobs:
         uses: actions/upload-pages-artifact@v3
         with:
           path: docs
+
+      - name: Keep scheduled workflow enabled
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh workflow enable collect.yml
 
   deploy:
     needs: collect
