@@ -449,8 +449,11 @@ class MonitorStorage:
             return cursor.rowcount > 0
 
 
-def export_github_data(storage: MonitorStorage, project_root: Path) -> None:
+def export_github_data(storage: MonitorStorage, project_root: Path) -> bool:
     accounts = storage.list_accounts()
+    if not accounts:
+        print("本地账号为空，跳过 GitHub 导出，避免覆盖云端账号。")
+        return False
     config_path = project_root / "config.json"
     data_path = project_root / "docs" / "data.json"
 
@@ -507,6 +510,7 @@ def export_github_data(storage: MonitorStorage, project_root: Path) -> None:
         json.dumps(data, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
+    return True
 
 
 def sync_to_github(project_root: Path) -> None:
@@ -677,8 +681,8 @@ class DashboardRequestHandler(BaseHTTPRequestHandler):
 
         def run() -> None:
             try:
-                export_github_data(self.storage, project_root)
-                sync_to_github(project_root)
+                if export_github_data(self.storage, project_root):
+                    sync_to_github(project_root)
             except Exception:
                 return
 
@@ -877,8 +881,8 @@ class HourlyScheduler:
                 continue
 
         try:
-            export_github_data(self.storage, self.project_root)
-            sync_to_github(self.project_root)
+            if export_github_data(self.storage, self.project_root):
+                sync_to_github(self.project_root)
         except Exception:
             pass
 
